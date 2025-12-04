@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拒絕誘惑大作戰</title>
+    
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 引入 Babel 用來解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 設定字體 -->
+    <style>
+        body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 模擬的 Padlet URL
+        const DEFAULT_PADLET_URL = "https://padlet.com/"; 
+
+        const { useState } = React;
+
+        function App() {
+            const [gameState, setGameState] = useState('start'); // start, identity, scenario, result
+            const [identity, setIdentity] = useState(null);
+            const [currentScenario, setCurrentScenario] = useState(null);
+            const [userResponse, setUserResponse] = useState('');
+            const [padletUrl, setPadletUrl] = useState(DEFAULT_PADLET_URL);
+            const [copied, setCopied] = useState(false);
+
+            // 身分變項資料庫
+            const variables = {
+                family: [
+                    { level: 'high', label: '家庭支持度高', desc: '家人很關心你，常陪你聊天。', color: 'text-green-600' },
+                    { level: 'mid', label: '家庭支持度普通', desc: '父母忙於工作，比較少時間相處。', color: 'text-yellow-600' },
+                    { level: 'low', label: '家庭支持度低', desc: '家裡常有爭吵，氣氛比較緊張。', color: 'text-red-600' }
+                ],
+                health: [
+                    { level: 'high', label: '身體狀況極佳', desc: '你是運動健將，體力充沛。', color: 'text-green-600' },
+                    { level: 'mid', label: '身體狀況普通', desc: '偶爾會感冒，體力一般。', color: 'text-yellow-600' },
+                    { level: 'low', label: '身體狀況較差', desc: '你有過敏體質或氣喘，容易疲累。', color: 'text-red-600' }
+                ],
+                money: [
+                    { level: 'high', label: '經濟寬裕', desc: '想要的東西通常都能買到。', color: 'text-green-600' },
+                    { level: 'mid', label: '經濟小康', desc: '生活無虞，但不能隨意亂花錢。', color: 'text-yellow-600' },
+                    { level: 'low', label: '經濟困難', desc: '家裡經濟壓力大，零用錢很少。', color: 'text-red-600' }
+                ],
+                mental: [
+                    { level: 'high', label: '心理健康正向', desc: '你總是樂觀自信，不怕挫折。', color: 'text-green-600' },
+                    { level: 'mid', label: '心理狀況普通', desc: '偶爾會感到焦慮，但還能調適。', color: 'text-yellow-600' },
+                    { level: 'low', label: '心理壓力大', desc: '你常覺得憂鬱、自卑，容易緊張。', color: 'text-red-600' }
+                ],
+                social: [
+                    { level: 'high', label: '人際關係好', desc: '你是班上的人氣王，朋友很多。', color: 'text-green-600' },
+                    { level: 'mid', label: '人際關係普通', desc: '有幾個固定的好朋友。', color: 'text-yellow-600' },
+                    { level: 'low', label: '人際關係孤立', desc: '常覺得被排擠，沒什麼朋友。', color: 'text-red-600' }
+                ]
+            };
+
+            // 誘惑情境資料庫
+            const scenarios = [
+                {
+                    type: 'tobacco',
+                    title: '廁所裡的秘密',
+                    content: '下課時間，你最好的朋友把你拉到廁所角落，拿出一個發光的電子菸，說：「這個抽起來有哈密瓜的味道，很酷喔！反正老師不會發現，你試試看一口就好。」',
+                    image: '💨'
+                },
+                {
+                    type: 'alcohol',
+                    title: '親戚的聚餐',
+                    content: '過年家族聚餐，一位喝醉的長輩一直把啤酒杯督到你嘴邊，大聲說：「五年級了啦！是大孩子了，喝一點酒有什麼關係？不喝就是不給叔叔面子喔！」',
+                    image: '🍺'
+                },
+                {
+                    type: 'drug',
+                    title: '奇怪的糖果',
+                    content: '放學回家的路上，一個看起來很友善的大哥哥給你一包包裝鮮豔的「咖啡包」，說：「我看你心情好像不好，這個喝了會讓你忘記煩惱，精神百倍喔！免費送你。」',
+                    image: '🍬'
+                },
+                {
+                    type: 'peer',
+                    title: '不想被排擠',
+                    content: '班上的風雲人物們在公園聚集，他們都在嘗試吸食某種不明粉末。他們看著你說：「如果你不敢試，以後就別跟我們混了，膽小鬼。」',
+                    image: '😎'
+                }
+            ];
+
+            const generateIdentity = () => {
+                const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+                setIdentity({
+                    family: getRandom(variables.family),
+                    health: getRandom(variables.health),
+                    money: getRandom(variables.money),
+                    mental: getRandom(variables.mental),
+                    social: getRandom(variables.social),
+                });
+                setGameState('identity');
+            };
+
+            const startScenario = () => {
+                const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+                setCurrentScenario(randomScenario);
+                setGameState('scenario');
+                setUserResponse('');
+                setCopied(false);
+            };
+
+            const copyToClipboard = () => {
+                const textToCopy = `【身分挑戰】\n家庭：${identity.family.label}\n心理：${identity.mental.label}\n\n【遇到誘惑：${currentScenario.title}】\n情境：${currentScenario.content}\n\n【我的拒絕策略】\n${userResponse}`;
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => setCopied(true))
+                        .catch(() => fallbackCopy(textToCopy));
+                } else {
+                    fallbackCopy(textToCopy);
+                }
+            };
+
+            const fallbackCopy = (text) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    setCopied(true);
+                } catch (err) {
+                    console.error('Copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            };
+
+            const IdentityCard = ({ icon, title, data }) => (
+                <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex items-start gap-3">
+                    <div className="p-2 bg-slate-100 rounded-full text-xl">
+                        {icon}
+                    </div>
+                    <div>
+                        <h4 className={`font-bold text-sm ${data.color}`}>{title}：{data.label}</h4>
+                        <p className="text-xs text-slate-500 mt-1">{data.desc}</p>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex justify-center items-center min-h-screen p-4 md:p-8">
+                    <div className="max-w-3xl w-full bg-white rounded-3xl shadow-xl overflow-hidden border-4 border-white">
+                        
+                        {/* Header */}
+                        <div className="bg-indigo-600 p-4 text-white text-center">
+                            <h1 className="text-2xl md:text-3xl font-bold tracking-wider">🛡️ 拒絕誘惑大作戰</h1>
+                            <p className="text-indigo-200 text-sm mt-1">守護你的未來，做出聰明選擇</p>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 md:p-8 min-h-[500px] flex flex-col">
+                            
+                            {/* 1. Start Screen */}
+                            {gameState === 'start' && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                                    <div className="text-6xl mb-4">🎲</div>
+                                    <h2 className="text-2xl font-bold text-slate-800">準備好接受挑戰了嗎？</h2>
+                                    <p className="text-slate-600 max-w-md">
+                                        在這個遊戲中，你會隨機獲得一個身分，並遇到各種生活中的誘惑。
+                                        <br/>
+                                        請設身處地思考，在這個身分下，你會如何聰明地拒絕？
+                                    </p>
+                                    
+                                    <div className="w-full max-w-md bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-left text-sm text-yellow-800 mb-4">
+                                        <strong>老師的小叮嚀：</strong>
+                                        <br/>
+                                        如果不確定 Padlet 網址，請先確認老師提供的連結。
+                                        <input 
+                                            type="text" 
+                                            value={padletUrl}
+                                            onChange={(e) => setPadletUrl(e.target.value)}
+                                            placeholder="在此輸入 Padlet 網址 (選填)"
+                                            className="mt-2 w-full p-2 border border-yellow-300 rounded bg-white text-slate-700 text-xs"
+                                        />
+                                    </div>
+
+                                    <button 
+                                        onClick={generateIdentity}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-2 text-xl"
+                                    >
+                                        開始抽取身分 ➡️
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 2. Identity Reveal */}
+                            {gameState === 'identity' && identity && (
+                                <div className="flex-1 flex flex-col space-y-6">
+                                    <div className="text-center">
+                                        <h2 className="text-xl font-bold text-slate-800">這是你這局的身分</h2>
+                                        <p className="text-slate-500 text-sm">每個人的起點不同，這會如何影響你的決定？</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <IdentityCard icon="👤" title="家庭" data={identity.family} />
+                                        <IdentityCard icon="❤️" title="健康" data={identity.health} />
+                                        <IdentityCard icon="💰" title="經濟" data={identity.money} />
+                                        <IdentityCard icon="🧠" title="心理" data={identity.mental} />
+                                        <IdentityCard icon="🤝" title="人際" data={identity.social} />
+                                    </div>
+
+                                    <div className="mt-auto flex justify-center pt-6">
+                                        <button 
+                                            onClick={startScenario}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg flex items-center gap-2"
+                                        >
+                                            遇到挑戰了！ 🛡️
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3. Scenario & Response */}
+                            {gameState === 'scenario' && currentScenario && (
+                                <div className="flex-1 flex flex-col space-y-6">
+                                    <div className="bg-slate-100 p-3 rounded-lg flex gap-4 text-xs text-slate-500 overflow-x-auto whitespace-nowrap">
+                                        <span className="font-bold">目前狀態：</span>
+                                        <span className={identity.family.color}>{identity.family.label}</span> | 
+                                        <span className={identity.mental.color}>{identity.mental.label}</span> | 
+                                        <span className={identity.social.color}>{identity.social.label}</span>
+                                    </div>
+
+                                    <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg">
+                                        <div className="flex justify-between items-start">
+                                            <h3 className="text-xl font-bold text-red-700 mb-2">{currentScenario.title}</h3>
+                                            <span className="text-4xl">{currentScenario.image}</span>
+                                        </div>
+                                        <p className="text-slate-700 leading-relaxed text-lg">
+                                            {currentScenario.content}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex-1">
+                                        <label className="block text-slate-700 font-bold mb-2">
+                                            請輸入你的拒絕方式：
+                                            <span className="text-sm font-normal text-slate-500 ml-2">(可以使用拒絕技巧：堅持立場、告知理由、轉移話題...)</span>
+                                        </label>
+                                        <textarea 
+                                            value={userResponse}
+                                            onChange={(e) => setUserResponse(e.target.value)}
+                                            className="w-full h-32 p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-lg"
+                                            placeholder="我會說..."
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end pt-4">
+                                        <button 
+                                            onClick={() => setGameState('result')}
+                                            disabled={!userResponse.trim()}
+                                            className={`py-3 px-8 rounded-full shadow-lg font-bold flex items-center gap-2 ${!userResponse.trim() ? 'bg-slate-300 cursor-not-allowed text-slate-500' : 'bg-green-600 hover:bg-green-700 text-white transform transition hover:scale-105'}`}
+                                        >
+                                            完成並分享 ✅
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 4. Result & Export */}
+                            {gameState === 'result' && (
+                                <div className="flex-1 flex flex-col items-center justify-center space-y-8 text-center">
+                                    
+                                    <div className="w-full bg-slate-50 rounded-xl p-6 border border-slate-200 text-left relative">
+                                        <div className="absolute -top-3 left-6 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                                            你的回應卡
+                                        </div>
+                                        <div className="space-y-3">
+                                            <p className="text-sm text-slate-500 border-b pb-2">
+                                                <span className="font-bold">身分背景：</span> {identity.family.label}、{identity.mental.label}...
+                                            </p>
+                                            <p className="text-lg font-medium text-red-600">
+                                                <span className="text-slate-400 text-sm font-normal mr-2">面對情境：</span>
+                                                {currentScenario.title}
+                                            </p>
+                                            <p className="text-xl text-slate-800 font-bold bg-white p-4 rounded border border-slate-100 shadow-sm">
+                                                「{userResponse}」
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-4 w-full max-w-md">
+                                        <p className="text-slate-600">做得好！現在將你的答案分享到 Padlet 吧。</p>
+                                        
+                                        <button 
+                                            onClick={copyToClipboard}
+                                            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 border-2 transition-all
+                                                ${copied 
+                                                ? 'bg-green-100 border-green-500 text-green-700' 
+                                                : 'bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                                                }`}
+                                        >
+                                            {copied ? '✅ 已複製內容！' : '📋 第一步：複製內容'}
+                                        </button>
+
+                                        <a 
+                                            href={padletUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 text-white shadow-lg transition-all
+                                                ${copied ? 'bg-indigo-600 hover:bg-indigo-700 transform hover:scale-105' : 'bg-slate-400 cursor-not-allowed pointer-events-none'}`}
+                                        >
+                                            🔗 第二步：前往 Padlet 貼上
+                                        </a>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setGameState('start')}
+                                        className="mt-8 text-slate-400 hover:text-slate-600 flex items-center gap-2 text-sm"
+                                    >
+                                        🔄 再玩一次
+                                    </button>
+                                </div>
+                            )}
+
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
